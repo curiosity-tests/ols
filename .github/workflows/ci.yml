@@ -1,5 +1,7 @@
 name: CI
+run-name: "CI ${{ inputs.leg || github.event_name }} ${{ inputs.racecar_run }}"
 env:
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
   ODIN_BRANCH: master
 
 on:
@@ -11,6 +13,20 @@ on:
     paths-ignore: ["**/*.md"]
   # Allow to run this workflow manually from the Actions tab.
   workflow_dispatch:
+    inputs:
+      leg:
+        description: "baseline (uninstrumented) or instrumented (under chalk/curiosity)"
+        type: choice
+        options: [instrumented, baseline]
+        default: baseline
+      profile:
+        description: "CrashOverride chalk profile"
+        type: string
+        default: curiosity-tests-racecar
+      racecar_run:
+        description: "racecar correlation token, echoed into the run name"
+        type: string
+        default: ""
 
 jobs:
   windows:
