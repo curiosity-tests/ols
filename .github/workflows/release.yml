@@ -5,82 +5,12 @@ env:
 on:
   workflow_dispatch:
   schedule:
-    - cron: 0 2 * * 0 # weekly 'nightly' release
+  - cron: 0 2 * * 0   # weekly 'nightly' release
   push:
     tags:
-      - dev-**
+    - dev-**
 
 jobs:
-  dist-arm64-darwin:
-    runs-on: macos-latest
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v1
-    - name: Set ODIN_BRANCH from tag if available
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-      run: |
-        echo "ODIN_BRANCH=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-        echo "OLS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-    - name: Download LLVM and setup PATH
-      run: |
-        brew install llvm@17
-        echo "/opt/homebrew/opt/llvm@17/bin" >> $GITHUB_PATH
-    - name: Download Odin
-      run: |
-        git clone --depth 1 --branch $ODIN_BRANCH https://github.com/odin-lang/Odin
-    - name: Build Odin
-      run: |
-        cd Odin
-        ./build_odin.sh release
-    - name: Build ols
-      run: ./ci.sh CI_NO_TESTS -target:darwin_arm64 -extra-linker-flags:"--target=arm64-apple-macos"
-    - name: Move to Dist
-      run: |
-        mkdir dist
-        mv ols dist/ols-arm64-darwin
-        mv odinfmt dist/odinfmt-arm64-darwin
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-arm64-darwin
-        path: ./dist
-
-  dist-x86_64-darwin:
-    runs-on: macos-15-intel
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v1
-    - name: Set ODIN_BRANCH from tag if available
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-      run: |
-        echo "ODIN_BRANCH=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-        echo "OLS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-    - name: Download LLVM and setup PATH
-      run: |
-        brew install llvm@17
-        echo "/usr/local/opt/llvm@17/bin" >> $GITHUB_PATH
-        TMP_PATH=$(xcrun --show-sdk-path)/user/include
-        echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
-    - name: Download Odin
-      run: |
-        git clone --depth 1 --branch $ODIN_BRANCH https://github.com/odin-lang/Odin
-    - name: Build Odin
-      run: |
-        cd Odin
-        make release
-    - name: Build ols
-      run: ./ci.sh CI
-    - name: Move to Dist
-      run: |
-        mkdir dist
-        mv ols dist/ols-x86_64-darwin
-        mv odinfmt dist/odinfmt-x86_64-darwin
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-x86_64-darwin 
-        path: ./dist
-
   dist-x86_64-unknown-linux-gnu:
     timeout-minutes: 30
     runs-on: ubuntu-latest
@@ -92,7 +22,7 @@ jobs:
         echo "ODIN_BRANCH=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
         echo "OLS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
     - name: Download LLVM
-      run:  |
+      run: |
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
         sudo ./llvm.sh 17
@@ -128,7 +58,7 @@ jobs:
         echo "ODIN_BRANCH=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
         echo "OLS_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
     - name: Download LLVM
-      run:  |
+      run: |
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
         sudo ./llvm.sh 17
@@ -155,51 +85,13 @@ jobs:
         name: dist-arm64-unknown-linux-gnu
         path: ./dist
 
-  dist-x86_64-pc-windows-msvc:
-    timeout-minutes: 30
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Set ODIN_BRANCH from tag if available
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-      shell: pwsh
-      run: |
-        $tagName = $env:GITHUB_REF.Replace('refs/tags/', '')
-        echo "ODIN_BRANCH=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "OLS_VERSION=$tagName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-    - name: Download Odin
-      shell: cmd
-      run: |
-        git clone --depth 1 --branch %ODIN_BRANCH% https://github.com/odin-lang/Odin
-    - name: Build Odin
-      shell: cmd
-      run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat
-        cd Odin
-        ./build.bat 1
-    - name: Build ols
-      shell: cmd
-      run: ./ci.bat CI
-    - name: Move to Dist
-      shell: cmd
-      run: |
-        mkdir dist
-        move ols.exe dist/
-        move odinfmt.exe dist/
-        move builtin dist/
-        cd dist
-        ren ols.exe ols-x86_64-pc-windows-msvc.exe
-        ren odinfmt.exe odinfmt-x86_64-pc-windows-msvc.exe
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-x86_64-pc-windows-msvc
-        path: ./dist
   publish:
     name: publish
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: ['dist-x86_64-pc-windows-msvc', 'dist-x86_64-unknown-linux-gnu', 'dist-arm64-unknown-linux-gnu', 'dist-x86_64-darwin', 'dist-arm64-darwin']
+    needs:
+    - 'dist-x86_64-unknown-linux-gnu'
+    - 'dist-arm64-unknown-linux-gnu'
     steps:
     - name: Install Nodejs
       uses: actions/setup-node@v1
